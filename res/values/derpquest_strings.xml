@@ -409,6 +409,7 @@
     <string name="status_bar_battery_percentage_text_next">Next to the icon</string>
     <string name="status_bar_battery_text_charging_title">Battery percentage when charging</string>
     <string name="status_bar_battery_text_charging_summary">Always display battery percentage when charging</string>
+    <string name="status_bar_battery_text_charging_color_title">Change precentage text color when charging</string>
 
     <!-- QS settings categories -->
     <string name="category_tiles_title">Tiles area</string>
@@ -577,7 +578,7 @@
 
     <!-- Gentle notifications header -->
     <string name="show_gentle_header_title">Show gentle notifications header</string>
-    <string name="show_gentle_header_summary">Wheter to show "silent notifications" title above such notifications (SystemUI restart required)</string>
+    <string name="show_gentle_header_summary">Whether to show "silent notifications" title above such notifications (SystemUI restart required)</string>
 
     <!-- flash on call waiting -->
     <string name="flash_on_call_category">Pulse flash</string>

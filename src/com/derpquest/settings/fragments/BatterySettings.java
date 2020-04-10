@@ -19,6 +19,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.provider.SearchIndexableResource;
@@ -56,6 +57,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import net.margaritov.preference.colorpicker.ColorPickerPreference;
+
 @SearchIndexable
 public class BatterySettings extends SettingsPreferenceFragment implements
         OnPreferenceChangeListener, Indexable {
@@ -64,6 +67,7 @@ public class BatterySettings extends SettingsPreferenceFragment implements
     private static final String STATUS_BAR_BATTERY_TEXT_CHARGING = "status_bar_battery_text_charging";
     private static final String BATTERY_PERCENTAGE_HIDDEN = "0";
     private static final String STATUS_BAR_BATTERY_STYLE = "status_bar_battery_style";
+    private static final String STATUS_BAR_BATTERY_TEXT_CHARGING_COLOR = "status_bar_battery_text_charging_color";
 
     private static final int BATTERY_STYLE_Q = 0;
     private static final int BATTERY_STYLE_DOTTED_CIRCLE = 1;
@@ -74,6 +78,7 @@ public class BatterySettings extends SettingsPreferenceFragment implements
     private ListPreference mBatteryPercent;
     private ListPreference mBatteryStyle;
     private SwitchPreference mBatteryCharging;
+    private ColorPickerPreference mChargingColor;
 
     @Override
     public void onCreate(Bundle icicle) {
@@ -86,16 +91,29 @@ public class BatterySettings extends SettingsPreferenceFragment implements
         mBatteryPercent = (ListPreference) findPreference(STATUS_BAR_SHOW_BATTERY_PERCENT);
         mBatteryCharging = (SwitchPreference) findPreference(STATUS_BAR_BATTERY_TEXT_CHARGING);
         mBatteryStyle = (ListPreference) findPreference(STATUS_BAR_BATTERY_STYLE);
+        mChargingColor = (ColorPickerPreference) findPreference(STATUS_BAR_BATTERY_TEXT_CHARGING_COLOR);
+
         int batterystyle = Settings.System.getInt(resolver,
                 Settings.System.STATUS_BAR_BATTERY_STYLE, BATTERY_STYLE_Q);
-        if (batterystyle != BATTERY_STYLE_HIDDEN) {
-            mBatteryStyle.setOnPreferenceChangeListener(this);
-        } else {
-            mBatteryStyle.setEnabled(false);
-            mBatteryStyle.setSummary(R.string.enable_first);
-        }
+        mBatteryStyle.setValueIndex(batterystyle);
+        mBatteryStyle.setOnPreferenceChangeListener(this);
 
-        updateBatteryOptions(batterystyle);
+        int batterypercent = Settings.System.getInt(resolver,
+                Settings.System.STATUS_BAR_SHOW_BATTERY_PERCENT, 0);
+        mBatteryPercent.setValueIndex(batterypercent);
+        mBatteryPercent.setOnPreferenceChangeListener(this);
+
+        boolean batterycharging = Settings.System.getInt(resolver,
+                Settings.System.STATUS_BAR_BATTERY_TEXT_CHARGING, 1) == 1;
+        mBatteryCharging.setChecked(batterycharging);
+        mBatteryCharging.setOnPreferenceChangeListener(this);
+
+        int color = Settings.System.getInt(resolver,
+                Settings.System.STATUS_BAR_BATTERY_TEXT_CHARGING_COLOR, 0xFFFFFF);
+        mChargingColor.setNewPreviewColor(color);
+        mChargingColor.setOnPreferenceChangeListener(this);
+
+        updateBatteryOptions();
     }
 
     @Override
@@ -104,25 +122,61 @@ public class BatterySettings extends SettingsPreferenceFragment implements
             int value = Integer.parseInt((String) objValue);
             Settings.System.putInt(getActivity().getContentResolver(),
                     Settings.System.STATUS_BAR_BATTERY_STYLE, value);
-            updateBatteryOptions(value);
+            updateBatteryOptions();
+            return true;
+        } else if (preference == mBatteryPercent) {
+            int value = Integer.parseInt((String) objValue);
+            Settings.System.putInt(getActivity().getContentResolver(),
+                    Settings.System.STATUS_BAR_SHOW_BATTERY_PERCENT, value);
+            updateBatteryOptions();
+            return true;
+        } else if (preference == mBatteryCharging) {
+            boolean value = (boolean) objValue;
+            Settings.System.putInt(getActivity().getContentResolver(),
+                    Settings.System.STATUS_BAR_BATTERY_TEXT_CHARGING, value ? 1 : 0);
+            updateBatteryOptions();
+            return true;
+        } else if (preference == mChargingColor) {
+            int color = (Integer) objValue;
+            Settings.System.putInt(getActivity().getContentResolver(),
+                    Settings.System.STATUS_BAR_BATTERY_TEXT_CHARGING_COLOR, color);
             return true;
         }
         return false;
     }
 
-    private void updateBatteryOptions(int batterystyle) {
-        boolean enabled = batterystyle != BATTERY_STYLE_TEXT && batterystyle != BATTERY_STYLE_HIDDEN;
-        if (batterystyle == BATTERY_STYLE_HIDDEN) {
+    private void updateBatteryOptions() {
+        int batterystyle = Settings.System.getInt(getActivity().getContentResolver(),
+                Settings.System.STATUS_BAR_BATTERY_STYLE, BATTERY_STYLE_Q);
+        int batteryPercent = Settings.System.getInt(getActivity().getContentResolver(),
+                Settings.System.STATUS_BAR_SHOW_BATTERY_PERCENT, 0);
+        boolean batteryChargingText = Settings.System.getInt(getActivity().getContentResolver(),
+                Settings.System.STATUS_BAR_BATTERY_TEXT_CHARGING, 1) == 1;
+
+        boolean isHidden = batterystyle == BATTERY_STYLE_HIDDEN;
+
+        mBatteryStyle.setEnabled(!isHidden);
+
+        if (isHidden) {
             mBatteryPercent.setValue(BATTERY_PERCENTAGE_HIDDEN);
             mBatteryPercent.setSummary(mBatteryPercent.getEntry());
+            mBatteryStyle.setSummary(R.string.enable_first);
             Settings.System.putInt(getActivity().getContentResolver(),
                     Settings.System.STATUS_BAR_SHOW_BATTERY_PERCENT, 0);
-        }
-        if (batterystyle == BATTERY_STYLE_TEXT)
+            mBatteryStyle.setEnabled(false);
+        } else if (batterystyle == BATTERY_STYLE_TEXT) {
             mBatteryCharging.setEnabled(false);
-        else
+            mBatteryStyle.setSummary(mBatteryStyle.getEntry());
+        } else {
             mBatteryCharging.setEnabled(true);
-        mBatteryPercent.setEnabled(enabled);
+            mBatteryStyle.setSummary(mBatteryStyle.getEntry());
+        }
+
+        mBatteryPercent.setEnabled(batterystyle != BATTERY_STYLE_TEXT &&
+                batterystyle != BATTERY_STYLE_HIDDEN);
+
+        mChargingColor.setEnabled(batterystyle == BATTERY_STYLE_TEXT ||
+                batteryPercent == 2 || batteryChargingText);
     }
 
     @Override
